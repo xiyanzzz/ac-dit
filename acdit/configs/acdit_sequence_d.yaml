@@ -1,0 +1,242 @@
+seed: 42
+use_future_prediction: true
+prediction_type: epsilon
+use_l1_loss: true
+qk_norm: true
+cross_qk_norm: true
+model:
+  vision_encoder:
+    _target_: AC_DiT.models.multimodal_encoder.vision_encoder_with_tokens.MVT_TokenFusion_Encoder
+    input_size: 224
+    patch_size: 16
+    in_channels: 3
+    depth: 10
+    num_heads: 8
+    mlp_ratio: 4
+    num_frames: 2
+    num_cameras: 2
+    language_dim: 512
+    attn_drop: 0.1
+    proj_drop: 0.1
+    qk_norm: true
+    mlp_drop: 0.05
+    use_token_fusion: true
+    cross_attn_drop: 0.1
+    cross_proj_drop: 0.1
+    cross_qk_norm: true
+    use_independent_patch_embed: true
+  language_encoder:
+    _target_: AC_DiT.models.multimodal_encoder.text_encoder.TextEncoder
+    clip_path: openai/clip-vit-base-patch32
+    device: cuda
+    dropout: 0.1
+  action_dim: 7
+  obs_horizon: 2
+  pred_horizon: 10
+  latent_dim: 512
+  use_future_prediction: true
+  future_pred_weight: 0.1
+  shared_language_projection: true
+  vision_decoder:
+    _target_: AC_DiT.models.imgs_pred_decoder.vision_decoder_with_masks.VisionDecoderWithMasks
+    input_size: 144
+    patch_size: 16
+    in_channels: 3
+    hidden_size: 256
+    encoder_hidden_size: 512
+    num_cameras: 2
+    mask_ratio: 0.75
+    depth: 6
+    num_heads: 8
+    max_future_step: 10
+    attn_drop: 0.3
+    proj_drop: 0.1
+    qk_norm: true
+    cross_attn_drop: 0.0
+    cross_proj_drop: 0.0
+    cross_qk_norm: true
+    mlp_drop: 0.0
+  model:
+    _target_: AC_DiT.models.model.AC_DiT.AC_DiT
+    num_heads: 8
+    mlp_ratio: 4
+    num_layers: 12
+    attn_drop: 0.1
+    proj_drop: 0.1
+    qk_norm: true
+    cross_attn_drop: 0.3
+    cross_proj_drop: 0.1
+    cross_qk_norm: true
+    mlp_drop: 0.05
+    mlp_embedder: true
+    linear_output: true
+  sampler_type: ddim
+  num_sampling_steps: 15
+  use_l1_loss: false
+  noise_scheduler:
+    num_train_timesteps: 1000
+    beta_schedule: squaredcos_cap_v2
+    beta_start: 0.0001
+    beta_end: 0.02
+    prediction_type: epsilon
+    clip_sample: false
+data:
+  _target_: AC_DiT.datasets.sequence_dataset_v4.SeparateSequenceDataModule
+  dataset_path: /root/autodl-tmp/acdit/dataset/task_D_D
+  train_folder: training/separate_data
+  val_folder: validation/separate_data
+  batch_size: 64
+  num_workers: 8
+  use_future_image: true
+  future_image_mean: 5.0 
+  future_image_std: 1.7
+  cache_size: 5000
+  transforms:
+    train:
+      rgb_static:
+      - _target_: torchvision.transforms.Resize
+        size: 224
+        antialias: true
+      - _target_: AC_DiT.datasets.sequence_dataset_v4.RandomShiftsAug
+        pad: 10
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+      rgb_gripper:
+      - _target_: torchvision.transforms.Resize
+        size: 224
+        antialias: true
+      - _target_: AC_DiT.datasets.sequence_dataset_v4.RandomShiftsAug
+        pad: 4
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+      future_rgb_static:
+      - _target_: torchvision.transforms.Resize
+        size: 144
+        antialias: true
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+      future_rgb_gripper:
+      - _target_: torchvision.transforms.Resize
+        size: 144
+        antialias: true
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+    val:
+      rgb_static:
+      - _target_: torchvision.transforms.Resize
+        size: 224
+        antialias: true
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+      rgb_gripper:
+      - _target_: torchvision.transforms.Resize
+        size: 224
+        antialias: true
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+      future_rgb_static:
+      - _target_: torchvision.transforms.Resize
+        size: 144
+        antialias: true
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+      future_rgb_gripper:
+      - _target_: torchvision.transforms.Resize
+        size: 144
+        antialias: true
+      - _target_: torchvision.transforms.Normalize
+        mean:
+        - 0.48145466
+        - 0.4578275
+        - 0.40821073
+        std:
+        - 0.26862954
+        - 0.26130258
+        - 0.27577711
+optimizer:
+  learning_rate: 0.0001
+  betas:
+  - 0.9
+  - 0.95
+  transformer_weight_decay: 0.05
+  encoder_weight_decay: 0.05
+lr_scheduler:
+  warmup_steps: 2130
+  constant_steps: 14200
+  decay_steps: 55000
+trainer:
+  max_epochs: 18
+  accelerator: gpu
+  limit_train_batches: 4900
+  devices:
+  - 0
+  precision: 16
+  log_every_n_steps: 132
+  val_check_interval: 0.33
+  gradient_clip_val: 1.0
+  callbacks:
+  - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: val_sample/sample_mse
+    save_top_k: 5
+    save_last: true
+    filename: '{epoch:02d}_{val_sample/sample_mse:.4f}'
+  - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    logging_interval: step
+logger:
+  _target_: pytorch_lightning.loggers.WandbLogger
+  project: AC_DiT
+  name: ac_dit_training_task_D_D
+  save_dir: logs/
+  offline: false
+  id: null
+  log_model: false
+  group: AC_DiT_with_future_pred
